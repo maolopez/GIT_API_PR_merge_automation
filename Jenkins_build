@@ -1,0 +1,86 @@
+#It suppose to be a Jenkins build
+
+GIT_USER=devops_username
+GIT_PASSWORD=devops_password
+api_url=https://endpointgithub.Jencomart.com/api/v3
+SLACK_URL=https://hooks.slack.com/services/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
+MORE_INFO=http://ca-qa-jenkins.Jencomart.com/jenkins/job/my_repo_Release_Master_merge_automated
+MORE_INFO2=http://ca-qa-jenkins.Jencomart.com/jenkins/job/my_repo_Master_Develop_merge_automated 
+
+#Release2Master
+
+#Create pull request
+
+curl -X POST  -d '{"title": "Jenkins Job","body": "Release2Master","head": "'${release}'","base": "master"}' \
+               $api_url/repos/my_repo/Tools_and_tests/pulls \
+               -u $GIT_USER:$GIT_PASSWORD
+
+#Get merge_commit_sha
+
+SHA=`curl -X GET  -d '{"state": "open","base": "'${release}'","sort": "created"}' https://endpointgithub.Jencomart.com/api/v3/repos/my_repo/Tools_and_tests/pulls -u $GIT_USER:$GIT_PASSWORD | /cinder/app1/scripts/jq '.[] | {merge_commit_sha}' | awk '{gsub(/"/, "", $2); print $2}'`
+SHA2=$(echo -e $SHA | tr -d '[:space:]')
+
+#Get a commit
+
+curl -X GET $api_url/repos/my_repo/Tools_and_tests/git/commits/$SHA2 -u $GIT_USER:$GIT_PASSWORD
+
+# TO MERGE  https://developer.github.com/v3/repos/merging/
+
+curl -X POST -d '{"base": "master","head": "'${release}'","commit_message": "Jenkins Job"}' $api_url/repos/my_repo/Tools_and_tests/merges -u $GIT_USER:$GIT_PASSWORD
+
+
+#Notify SLACK
+
+curl -X POST -H 'Content-type: application/json' \
+          --proxy 'http://sysproxy.jencol-mart.com:8080' \
+          --data @- ${SLACK_URL} \
+          << EOF
+          {
+              "text": "*${JOB_NAME}* - *${BUILD_NUMBER}* - ${release}2Master- *${MORE_INFO}* -",
+              "channel": "#ca_jencomart_git",
+             "username": "ca-prod-jenkins"
+          }
+EOF
+
+
+#Master2Develop
+
+
+#Create pull request
+
+curl -X POST  -d '{"title": "Jenkins Job","body": "Master2Develop","head": "master","base": "develop"}' \
+               $api_url/repos/my_repo/Tools_and_tests/pulls \
+               -u $GIT_USER:$GIT_PASSWORD
+
+#Get merge_commit_sha
+
+SHA=`curl -X GET  -d '{"state": "open","base": "develop","sort": "created"}' https://endpointgithub.Jencomart.com/api/v3/repos/my_repo/Tools_and_tests/pulls -u $GIT_USER:$GIT_PASSWORD | /cinder/app1/scripts/jq '.[] | {merge_commit_sha}' | awk '{gsub(/"/, "", $2); print $2}'`
+SHA2=$(echo -e $SHA | tr -d '[:space:]')
+
+#Get a commit
+
+curl -X GET $api_url/repos/my_repo/Tools_and_tests/git/commits/$SHA2 -u $GIT_USER:$GIT_PASSWORD
+
+# TO MERGE  https://developer.github.com/v3/repos/merging/
+
+curl -X POST -d '{"base": "develop","head": "master","commit_message": "Jenkins Job"}' $api_url/repos/my_repo/Tools_and_tests/merges -u $GIT_USER:$GIT_PASSWORD
+
+#Notify SLACK
+
+curl -X POST -H 'Content-type: application/json' \
+          --proxy 'http://sysproxy.jencol-mart.com:8080' \
+          --data @- ${SLACK_URL} \
+          << EOF
+          {
+              "text": "*${JOB_NAME}* - *${BUILD_NUMBER}* - Master2Develop- *${MORE_INFO2}* -",
+              "channel": "#ca_jencomart_git",
+             "username": "ca-prod-jenkins"
+          }
+EOF
+
+
+
+#Build periodically every early morning
+#TZ=America/Toronto
+#30 00 * * 1-5
+
