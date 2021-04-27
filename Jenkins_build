@@ -1,4 +1,6 @@
-#It suppose to be a Jenkins build
+#!/bin/bash -x
+
+#It suppose to be a Jenkins free style project
 
 GIT_USER=devops_username
 GIT_PASSWORD=devops_password
